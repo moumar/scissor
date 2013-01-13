@@ -63,9 +63,13 @@ module Scissor
       end
     end
 
-    def duration
-      @fragments.inject(0) do |memo, fragment|
-        memo += fragment.duration
+    def duration(new_duration = nil)
+      if new_duration
+        stretch(new_duration*100/self.duration)
+      else
+        @fragments.inject(0) do |memo, fragment|
+          memo += fragment.duration
+        end
       end
     end
 
