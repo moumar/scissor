@@ -341,4 +341,76 @@ describe Scissor do
 
     scissor.silence
   end
+
+  it "should fades in with just one fragment" do
+    faded = @mp3.fade_in(1)
+    faded.fragments[0].fade_in_duration.should == 1.0
+    faded.fragments[0].fade_in_start_volume_ratio.should == 0.0
+    faded.fragments[0].fade_in_end_volume_ratio.should == 1.0
+  end
+
+  it "should fades in with sliced fragment" do
+    mp3 = Scissor.join(@mp3.slice(40, 3).split(3))
+    faded = mp3.fade_in(0.5)
+    faded.fragments[0].fade_in_duration.should == 0.5
+    faded.fragments[0].fade_in_start_volume_ratio.should == 0.0
+    faded.fragments[0].fade_in_end_volume_ratio.should == 1.0
+
+    faded.fragments[1].fade_in_duration.should == 0.0
+    faded.fragments[1].fade_in_start_volume_ratio.should == 1.0
+    faded.fragments[1].fade_in_end_volume_ratio.should == 1.0
+
+    faded.fragments[2].fade_in_duration.should == 0.0
+    faded.fragments[2].fade_in_start_volume_ratio.should == 1.0
+    faded.fragments[2].fade_in_end_volume_ratio.should == 1.0
+
+    faded = mp3.fade_in(1.5)
+    faded.fragments[0].fade_in_duration.should == 1.0
+    faded.fragments[0].fade_in_start_volume_ratio.should == 0.0
+    faded.fragments[0].fade_in_end_volume_ratio.should == 2/3.0
+
+    faded.fragments[1].fade_in_duration.should == 0.5
+    faded.fragments[1].fade_in_start_volume_ratio.should == 2/3.0
+    faded.fragments[1].fade_in_end_volume_ratio.should == 1.0
+
+    faded.fragments[2].fade_in_duration.should == 0.0
+    faded.fragments[2].fade_in_start_volume_ratio.should == 1.0
+    faded.fragments[2].fade_in_end_volume_ratio.should == 1.0
+  end
+
+  it "should fades out with just one fragment" do
+    faded = @mp3.fade_out(1)
+    faded.fragments[0].fade_out_duration.should == 1.0
+    faded.fragments[0].fade_out_start_volume_ratio.should == 1.0
+    faded.fragments[0].fade_out_end_volume_ratio.should == 0.0
+  end
+
+  it "should fades out with sliced fragment" do
+    mp3 = Scissor.join(@mp3.slice(40, 3).split(3))
+    faded = mp3.fade_out(0.5)
+    faded.fragments[0].fade_out_duration.should == 0.0
+    faded.fragments[0].fade_out_start_volume_ratio.should == 1.0
+    faded.fragments[0].fade_out_end_volume_ratio.should == 1.0
+
+    faded.fragments[1].fade_out_duration.should == 0.0
+    faded.fragments[1].fade_out_start_volume_ratio.should == 1.0
+    faded.fragments[1].fade_out_end_volume_ratio.should == 1.0
+
+    faded.fragments[2].fade_out_duration.should == 0.5
+    faded.fragments[2].fade_out_start_volume_ratio.should == 1.0
+    faded.fragments[2].fade_out_end_volume_ratio.should == 0.0
+
+    faded = mp3.fade_out(1.5)
+    faded.fragments[0].fade_out_duration.should == 0.0
+    faded.fragments[0].fade_out_start_volume_ratio.should == 1.0
+    faded.fragments[0].fade_out_end_volume_ratio.should == 1.0
+
+    faded.fragments[1].fade_out_duration.should == 0.5
+    faded.fragments[1].fade_out_start_volume_ratio.should == 1.0
+    faded.fragments[1].fade_out_end_volume_ratio.should be_within(0.01).of(2/3.0)
+
+    faded.fragments[2].fade_out_duration.should == 1.0
+    faded.fragments[2].fade_out_start_volume_ratio.should be_within(0.01).of(2/3.0)
+    faded.fragments[2].fade_out_end_volume_ratio.should == 0.0
+  end
 end

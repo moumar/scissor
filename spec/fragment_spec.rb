@@ -4,7 +4,7 @@ require 'spec_helper'
 
 describe Scissor::Fragment do
   before do
-    @fragment = Scissor::Fragment.new(fixture('sample.mp3'), 5.5, 12.4)
+    @fragment = Scissor::Fragment.new(:filename => fixture('sample.mp3'), :start => 5.5, :length => 12.4)
   end
 
   it "should have a filename as an instance of Pathname" do
@@ -31,14 +31,14 @@ describe Scissor::Fragment do
   end
 
   it "should have a pitch" do
-    fragment = Scissor::Fragment.new(fixture('sample.mp3'), 5, 10.5, false, 50)
+    fragment = Scissor::Fragment.new(:filename => fixture('sample.mp3'), :start => 5, :length => 10.5, :reverse => false, :pitch => 50)
 
     fragment.pitch.should eql(50)
     fragment.duration.should eql(21.0)
   end
 
   it "should have a pan" do
-    fragment = Scissor::Fragment.new(fixture('sample.mp3'), 5, 10.5, false, 50, false, 10)
+    fragment = Scissor::Fragment.new(:filename => fixture('sample.mp3'), :start => 5, :length => 10.5, :reverse => false, :pitch => 50, :stretch => false, :pan => 10)
 
     fragment.pan.should eql(10)
   end
@@ -65,7 +65,7 @@ describe Scissor::Fragment do
   end
 
   it "should return new fragment and remaining start point and length in half pitch" do
-    fragment = Scissor::Fragment.new(fixture('sample.mp3'), 5, 10.5, false, 50)
+    fragment = Scissor::Fragment.new(:filename => fixture('sample.mp3'), :start => 5, :length => 10.5, :reverse => false, :pitch => 50)
 
     new_fragment, remaining_start, remaining_length = fragment.create(0.5, 1.0)
     new_fragment.filename.should eql(fixture('sample.mp3'))

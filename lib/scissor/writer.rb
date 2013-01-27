@@ -57,20 +57,32 @@ module Scissor
           rubberband_out = tmpdir + (Digest::MD5.hexdigest(fragment_filename.to_s) + "rubberband_#{index}.wav")
           rubberband_temp = tmpdir + "_rubberband.wav"
 
-          run_command("ecasound " +
-            "-i:" +
-            (fragment.reversed? ? 'reverse,' : '') +
-            "select,#{fragment.start},#{fragment.original_duration},\"#{fragment_outfile}\" -o:#{rubberband_temp} "
-          )
-          run_command("rubberband -T #{fragment.pitch.to_f/100} \"#{rubberband_temp}\" \"#{rubberband_out}\"")
+          run_command("ecasound -i:select,#{fragment.start},#{fragment.original_duration},\"#{fragment_outfile}\" -o:#{rubberband_temp} ")
+          run_command("rubberband -D #{fragment.duration} \"#{rubberband_temp}\" \"#{rubberband_out}\"")
 
-          cmd << "-i:\"#{rubberband_out}\""
-        else
-          cmd <<
-            "-i:" +
-            (fragment.reversed? ? 'reverse,' : '') +
-            "select,#{fragment.start},#{fragment.original_duration},\"#{fragment_outfile}\" " +
-            (fragment.pitch.to_f == 100.0 ? "" : "-ei:#{fragment.pitch} ")
+          fragment = fragment.clone do |a|
+            a[:stretch] = false
+            a[:pitch] = 100.0
+            a[:length] = fragment.duration
+            a[:filename] = rubberband_out
+            a[:start] = 0
+          end
+          fragment_outfile = rubberband_out
+        end
+
+        cmd <<
+          "-i:" +
+          (fragment.reversed? ? 'reverse,' : '') +
+          "select,#{fragment.start},#{fragment.original_duration},\"#{fragment_outfile}\" " +
+          (fragment.pitch.to_f == 100.0 ? "" : "-ei:#{fragment.pitch} ") +
+          (fragment.volume != 100 ? "-ea:#{fragment.volume} " : "")
+
+        if fragment.fade_in_duration != 0.0
+          cmd << "-ea:100 -kl:1,#{100.0*fragment.fade_in_start_volume_ratio},#{100.0*fragment.fade_in_end_volume_ratio},#{fragment.fade_in_duration} "
+        end
+
+        if fragment.fade_out_duration != 0.0
+          cmd << "-ea:100 -kl2:1,#{100.0*fragment.fade_out_start_volume_ratio},#{100.0*fragment.fade_out_end_volume_ratio},#{fragment.duration - fragment.fade_out_duration},#{fragment.fade_out_duration} "
         end
 
         position += fragment.duration

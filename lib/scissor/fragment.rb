@@ -2,34 +2,49 @@ require 'pathname'
 
 module Scissor
   class Fragment
-    attr_reader :filename, :start, :pitch, :pan
+    attr_reader :filename, :attributes
 
-    def initialize(filename, start, duration, reverse = false, pitch = 100, stretch = false, pan = 50)
-      @filename = Pathname.new(filename).realpath
-      @start = start
-      @duration = duration
-      @reverse = reverse
-      @pitch = pitch
-      @is_stretched = stretch
-      @pan = pan
-
+    def initialize(attributes)
+      @attributes = { 
+        :reverse => false, 
+        :pitch => 100, 
+        :stretch => false, 
+        :pan => 50, 
+        :volume => 100, 
+        :fade_in_start_volume_ratio => 1.0,
+        :fade_in_end_volume_ratio => 1.0, 
+        :fade_in_duration => 0.0,
+        :fade_out_start_volume_ratio => 1.0, 
+        :fade_out_end_volume_ratio => 1.0, 
+        :fade_out_duration => 0.0,
+      }.merge(attributes)
+      [:filename, :start, :length].each do |arg|
+        unless @attributes[arg]
+          raise ArgumentError, "missing #{arg} argument"
+        end
+      end
+      @filename = Pathname.new(attributes[:filename]).realpath
       freeze
     end
 
+    def method_missing(mid)
+      @attributes[mid] or super
+    end
+
     def duration
-      @duration * (100 / pitch.to_f)
+      @attributes[:length] * (100 / @attributes[:pitch].to_f)
     end
 
     def original_duration
-      @duration
+      @attributes[:length] 
     end
 
     def reversed?
-      @reverse
+      @attributes[:reverse] 
     end
 
     def stretched?
-      @is_stretched
+      @attributes[:stretch] 
     end
 
     def create(remaining_start, remaining_length)
@@ -50,7 +65,7 @@ module Scissor
       new_fragment = clone do |attributes|
         attributes.update(
           :start    =>  start + remaining_start * pitch.to_f / 100,
-          :duration =>  new_length * pitch.to_f / 100,
+          :length =>  new_length * pitch.to_f / 100,
           :reverse  => false
           )
       end
@@ -58,30 +73,14 @@ module Scissor
       return [new_fragment, 0, remaining_length]
     end
 
-    def clone(&block)
-      attributes = {
-        :filename => filename,
-        :start    => start,
-        :duration => original_duration,
-        :reverse  => reversed?,
-        :pitch    => pitch,
-        :stretch  => stretched?,
-        :pan      => pan
-      }
-
+    def clone(new_attributes = {})
       if block_given?
-        block.call(attributes)
+        attributes = @attributes.dup
+        yield attributes
+        self.class.new(attributes)
+      else
+        self.class.new(@attributes.merge new_attributes)
       end
-
-      self.class.new(
-        attributes[:filename],
-        attributes[:start],
-        attributes[:duration],
-        attributes[:reverse],
-        attributes[:pitch],
-        attributes[:stretch],
-        attributes[:pan]
-      )
     end
   end
 end

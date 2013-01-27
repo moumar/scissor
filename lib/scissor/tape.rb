@@ -14,9 +14,9 @@ module Scissor
       if filename
         filename = Pathname(filename).expand_path
         @fragments << Fragment.new(
-          filename,
-          0,
-          SoundFile.new_from_filename(filename).length)
+          :filename => filename,
+          :start => 0,
+          :length => SoundFile.new_from_filename(filename).length)
       end
     end
 
@@ -171,28 +171,16 @@ module Scissor
     end
 
     def reverse
-      new_instance = self.class.new
-
-      @fragments.reverse.each do |fragment|
-        new_instance.add_fragment(fragment.clone do |attributes|
-            attributes[:reverse] = !fragment.reversed?
-          end)
+      fragment_loop(true) do |fragment, attributes|
+        attributes[:reverse] = !fragment.reversed?
       end
-
-      new_instance
     end
 
     def pitch(pitch, stretch = false)
-      new_instance = self.class.new
-
-      @fragments.each do |fragment|
-        new_instance.add_fragment(fragment.clone do |attributes|
-            attributes[:pitch]   = fragment.pitch * (pitch.to_f / 100)
-            attributes[:stretch] = stretch
-          end)
+      fragment_loop do |fragment, attributes|
+        attributes[:pitch]   = fragment.pitch * (pitch.to_f / 100)
+        attributes[:stretch] = stretch
       end
-
-      new_instance
     end
 
     def stretch(factor)
@@ -201,15 +189,53 @@ module Scissor
     end
 
     def pan(right_percent)
-      new_instance = self.class.new
-
-      @fragments.each do |fragment|
-        new_instance.add_fragment(fragment.clone do |attributes|
-            attributes[:pan] = right_percent
-          end)
+      fragment_loop do |fragment, attributes|
+        attributes[:pan] = right_percent
       end
+    end
 
-      new_instance
+    def fade_in(fade_duration)
+      volume_ratio_at_position = proc do |pos|
+        pos -= @fragments[0].start
+        [ (pos/fade_duration), 1.0].min
+      end
+      fade_duration_left = fade_duration
+      fragment_loop do |fragment, attributes|
+        if fragment.start <= (self.duration + fragment.start - fade_duration)
+          attributes[:fade_in_start_volume_ratio] *= volume_ratio_at_position.call(fragment.start)
+          d = [fragment.duration, fade_duration_left].min
+          attributes[:fade_in_end_volume_ratio]   *= volume_ratio_at_position.call(fragment.start + d)
+          attributes[:fade_in_duration] = d
+          fade_duration_left -= d
+        end
+      end
+    end
+
+    def fade_out(fade_duration)
+      fade_position = self.duration - fade_duration
+      volume_ratio_at_position = proc do |pos|
+        pos -= @fragments.first.start
+        pos -= fade_position
+        1 - [0, [pos / fade_duration, 1].min].max
+      end
+      fade_duration_left = fade_duration
+      fragment_loop do |fragment, attributes|
+        fragment_end = fragment.start + fragment.duration - @fragments.first.start
+        if fragment_end > fade_position
+          #puts "fragment_end #{fragment_end} fade_duration_left #{fade_duration_left} fade_position #{fade_position}"
+          attributes[:fade_out_start_volume_ratio] *= volume_ratio_at_position.call(fragment.start)
+          attributes[:fade_out_end_volume_ratio]   *= volume_ratio_at_position.call(fragment.start + fragment.duration)
+          duration = [fade_duration_left - (self.duration - fragment_end ), fade_duration_left].min
+          attributes[:fade_out_duration] = duration
+          fade_duration_left -= duration
+        end
+      end
+    end
+
+    def volume(v)
+      fragment_loop do |fragment, attributes|
+        attributes[:volume] = v
+      end
     end
 
     def to_file(filename, options = {})
@@ -224,6 +250,19 @@ module Scissor
 
     def silence
       Scissor.silence(duration)
+    end
+
+    private
+
+    def fragment_loop(reverse = false)
+      new_instance = self.class.new
+      fragments = reverse ? @fragments.reverse : @fragments
+      fragments.each do |fragment|
+        new_instance.add_fragment(fragment.clone do |attributes|
+          yield fragment, attributes
+        end)
+      end
+      new_instance
     end
   end
 end
