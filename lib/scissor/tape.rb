@@ -194,7 +194,10 @@ module Scissor
       end
     end
 
-    def fade_in(fade_duration)
+    def fade_in(fade_duration = nil)
+      unless fade_duration
+        fade_duration = self.duration
+      end
       volume_ratio_at_position = proc do |pos|
         pos -= @fragments[0].start
         [ (pos/fade_duration), 1.0].min
@@ -211,7 +214,10 @@ module Scissor
       end
     end
 
-    def fade_out(fade_duration)
+    def fade_out(fade_duration = nil)
+      unless fade_duration
+        fade_duration = self.duration
+      end
       fade_position = self.duration - fade_duration
       volume_ratio_at_position = proc do |pos|
         pos -= @fragments.first.start
